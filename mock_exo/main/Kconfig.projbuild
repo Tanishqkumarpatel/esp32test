@@ -1,0 +1,79 @@
+menu "Mock exo"
+
+    choice MOCK_EXO_COMMS_BACKEND
+        prompt "Comms backend"
+        default MOCK_EXO_COMMS_STUB
+
+        config MOCK_EXO_COMMS_STUB
+            bool "Stub (discards everything)"
+            help
+                Build against comms_stub.c. Nothing is sent and nothing runs on core 0.
+
+        config MOCK_EXO_COMMS_UART
+            bool "Built-in UART1 transmit"
+            help
+                Build against comms_uart.c: a core 0 task writes the frames to UART1.
+                Transmit only; incoming force packets are not parsed.
+
+        config MOCK_EXO_COMMS_EXTERNAL
+            bool "External comms component (task 3)"
+            help
+                Build with neither backend. Link task 3's real comms component, which
+                must provide every function in comms.h.
+    endchoice
+
+    config MOCK_EXO_UART_TX_GPIO
+        int "UART1 TX GPIO"
+        depends on MOCK_EXO_COMMS_UART
+        default 16
+        help
+            TBD: same as esp32test (uart_async_rxtxtasks). Confirm a free pin on the board.
+
+    config MOCK_EXO_UART_RX_GPIO
+        int "UART1 RX GPIO"
+        depends on MOCK_EXO_COMMS_UART
+        default 17
+        help
+            TBD: same as esp32test. Configured but nothing is read from it yet.
+
+    config MOCK_EXO_UART_BAUD
+        int "UART1 baud rate"
+        depends on MOCK_EXO_COMMS_UART
+        default 921600
+        help
+            One 17-byte frame per ms is 170 kbit/s on the wire (10 bits a byte), so
+            115200 cannot keep up and frames are dropped. TBD: the real link speed.
+
+    config MOCK_EXO_LATENCY_MS
+        int "Closure send latency (ms)"
+        range 0 1000
+        default 0
+        help
+            Fixed delay between measuring closure and sending it to comms, in whole 1 ms
+            ticks. The packet time_us keeps the measurement time, so the receiver sees
+            the closure this many ms old.
+            TBD: the real exo-side latency is not in the contract yet.
+
+    config MOCK_EXO_CRC_ERROR_EVERY
+        int "Send a wrong CRC on every Nth frame (0 = off)"
+        range 0 100000
+        default 0
+        help
+            Deterministic fault injection for the receiver's CRC check. The frame is
+            otherwise intact. Combines with the random rate below.
+
+    config MOCK_EXO_CRC_ERROR_PERMILLE
+        int "Chance of a wrong CRC per frame, in 1/1000 (0 = off)"
+        range 0 1000
+        default 0
+        help
+            Random fault injection from the hardware RNG, so the pattern differs each boot.
+            50 = about 5% of frames.
+
+    config MOCK_EXO_TICK_GPIO
+        int "GPIO toggled once per tick (logic analyzer)"
+        default 4
+        help
+            TBD: confirm a free, non-strapping pin on the board in use.
+
+endmenu
